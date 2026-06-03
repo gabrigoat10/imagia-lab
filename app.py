@@ -42,8 +42,18 @@ def decode_image(file_storage):
 
 def pil_to_response(pil_img, fmt="PNG"):
     """Convierte imagen PIL a respuesta de bytes lista para enviar."""
+    # Limitar tamaño de salida a máximo 1500px para respuesta rápida
+    max_out = 1500
+    w, h = pil_img.size
+    if w > max_out or h > max_out:
+        factor = min(max_out / w, max_out / h)
+        pil_img = pil_img.resize((int(w * factor), int(h * factor)), Image.LANCZOS)
+
     buf = io.BytesIO()
-    pil_img.save(buf, format=fmt)
+    if fmt == "PNG":
+        pil_img.save(buf, format="PNG", optimize=True)
+    else:
+        pil_img.save(buf, format="JPEG", quality=92, optimize=True)
     buf.seek(0)
     mime = "image/png" if fmt == "PNG" else "image/jpeg"
     return send_file(buf, mimetype=mime)

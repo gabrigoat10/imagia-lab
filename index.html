@@ -443,6 +443,83 @@
     .compare-grid { grid-template-columns: 1fr; }
     .tools-grid { grid-template-columns: 1fr; }
   }
+.slider-wrap {
+    position: relative;
+    width: 100%;
+    min-height: 300px;
+    max-height: 500px;    overflow: hidden;
+    border-radius: 12px;
+    cursor: ew-resize;
+    user-select: none;
+    background: repeating-conic-gradient(#1c1c28 0% 25%, #222232 0% 50%) 0 0 / 20px 20px;
+    margin-bottom: 20px;
+  }
+
+  .slider-img {
+    display: block;
+    width: 100%;
+    max-height: 500px;
+    object-fit: contain;
+  }
+
+  .slider-overlay {
+    position: absolute;
+    top: 0; left: 0;
+    width: 50%;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .slider-overlay .slider-img {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+    max-width: none;
+  }
+
+  .slider-line {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 2px;
+    height: 100%;
+    background: white;
+    transform: translateX(-50%);
+    pointer-events: none;
+  }
+
+  .slider-handle {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 40px;
+    height: 40px;
+    background: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: bold;
+    color: #333;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.4);
+    gap: 2px;
+  }
+
+  .slider-label {
+    position: absolute;
+    bottom: 12px;
+    padding: 4px 10px;
+    background: rgba(0,0,0,0.5);
+    color: white;
+    font-size: 12px;
+    border-radius: 6px;
+    pointer-events: none;
+  }
+
+  .slider-label.left { left: 12px; }
+  .slider-label.right { right: 12px; }
 </style>
 </head>
 <body>
@@ -498,23 +575,20 @@
 
     <div class="error-msg" id="errorMsg"></div>
 
-    <div class="result-area" id="resultArea">
-      <div class="result-label">Resultado</div>
-      <div class="compare-grid">
-        <div class="compare-box">
-          <div class="compare-box-label">📷 Original</div>
-          <img id="imgOriginal" src="" alt="Original">
+    <img id="imgOriginal" src="" alt="Original" style="display:none">
+      <div class="slider-wrap" id="sliderWrap" style="display:none">
+        <img class="slider-img" id="sliderBefore" src="" alt="Antes">
+        <div class="slider-overlay" id="sliderOverlay">
+          <img class="slider-img" id="sliderAfter" src="" alt="Después">
         </div>
-        <div class="compare-box">
-          <div class="compare-box-label">✨ Procesada</div>
-          <img id="imgResult" src="" alt="Resultado">
+        <div class="slider-line" id="sliderLine">
+          <div class="slider-handle">
+            <span>‹</span><span>›</span>
+          </div>
         </div>
+        <div class="slider-label left">📷 Antes</div>
+        <div class="slider-label right">✨ Después</div>
       </div>
-      <a class="btn-download" id="btnDownload" download="resultado.png">
-        ⬇️ Descargar imagen
-      </a>
-    </div>
-  </div>
 </div>
 
 <script>
@@ -813,10 +887,10 @@ document.getElementById('btnProcess').addEventListener('click', async () => {
     const blob = await response.blob();
     const url = URL.createObjectURL(blob);
 
-    document.getElementById('imgResult').src = url;
     document.getElementById('btnDownload').href = url;
     document.getElementById('btnDownload').download = `${currentTool.id}-resultado.png`;
 
+    initSlider(document.getElementById('imgOriginal').src, url);
     resultArea.classList.add('visible');
 
   } catch (err) {
@@ -832,6 +906,46 @@ document.getElementById('btnProcess').addEventListener('click', async () => {
 renderTools();
 checkAPI();
 setInterval(checkAPI, 10000);
+// Slider antes/después
+function initSlider(beforeSrc, afterSrc) {
+  const wrap = document.getElementById('sliderWrap');
+  const before = document.getElementById('sliderBefore');
+  const after = document.getElementById('sliderAfter');
+  const overlay = document.getElementById('sliderOverlay');
+  const line = document.getElementById('sliderLine');
+
+  before.src = beforeSrc;
+  after.src = afterSrc;
+
+  // Esperar que cargue la imagen para ajustar altura
+  before.onload = () => {
+    const ratio = before.naturalHeight / before.naturalWidth;
+    const w = wrap.offsetWidth;
+    const h = Math.min(Math.max(w * ratio, 300), 500);
+    wrap.style.height = h + 'px';
+    after.style.width = w + 'px';
+    after.style.height = h + 'px';
+    wrap.style.display = 'block';
+  };
+
+  let dragging = false;
+
+  function setPos(x) {
+    const rect = wrap.getBoundingClientRect();
+    let pct = (x - rect.left) / rect.width;
+    pct = Math.max(0.02, Math.min(0.98, pct));
+    overlay.style.width = (pct * 100) + '%';
+    line.style.left = (pct * 100) + '%';
+  }
+
+  wrap.addEventListener('mousedown', e => { dragging = true; setPos(e.clientX); });
+  window.addEventListener('mousemove', e => { if (dragging) setPos(e.clientX); });
+  window.addEventListener('mouseup', () => dragging = false);
+
+  wrap.addEventListener('touchstart', e => { dragging = true; setPos(e.touches[0].clientX); });
+  window.addEventListener('touchmove', e => { if (dragging) setPos(e.touches[0].clientX); });
+  window.addEventListener('touchend', () => dragging = false);
+}
 </script>
 </body>
 </html>
