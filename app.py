@@ -25,6 +25,19 @@ def decode_image(file_storage):
     """Convierte un archivo subido en imagen PIL y array numpy."""
     img_bytes = file_storage.read()
     pil_img = Image.open(io.BytesIO(img_bytes)).convert("RGBA")
+    
+    # Limitar tamaño máximo a 2000px para no saturar memoria en Railway
+    max_size = 2000
+    w, h = pil_img.size
+    if w > max_size or h > max_size:
+        factor = min(max_size / w, max_size / h)
+        new_w = int(w * factor)
+        new_h = int(h * factor)
+        pil_img = pil_img.resize((new_w, new_h), Image.LANCZOS)
+        buf = io.BytesIO()
+        pil_img.save(buf, format="PNG")
+        img_bytes = buf.getvalue()
+    
     return pil_img, img_bytes
 
 def pil_to_response(pil_img, fmt="PNG"):
