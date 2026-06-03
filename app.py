@@ -1,3 +1,6 @@
+import os
+os.environ["OPENCV_IO_ENABLE_OPENEXR"] = "0"
+os.environ["QT_QPA_PLATFORM"] = "offscreen"
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 import cv2
