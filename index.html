@@ -2,7 +2,23 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
+<!-- Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-V343DZ00S6"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-V343DZ00S6');
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="ImagIA Lab — Herramientas gratuitas de edición de imágenes con inteligencia artificial. Elimina fondos, mejora fotos, upscaling, restauración y más.">
+<meta name="keywords" content="eliminar fondo imagen, mejorar calidad foto, upscaler imagen, restaurar fotos, herramientas IA imagen, fondo transparente, semitonos DTF">
+<meta name="author" content="ImagIA Lab">
+<meta property="og:title" content="ImagIA Lab — Magia para tus imágenes">
+<meta property="og:description" content="Edita imágenes con inteligencia artificial. Gratis, rápido y sin límites.">
+<meta property="og:url" content="https://imagia-lab.netlify.app">
+<meta property="og:type" content="website">
+<link rel="canonical" href="https://imagia-lab.netlify.app">
 <title>ImagIA Lab — Herramientas de imagen con IA</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
@@ -502,7 +518,7 @@
 </div>
 
 <script>
-const API = 'http://localhost:5000';
+const API = 'https://web-production-99925.up.railway.app';
 
 const TOOLS = [
   {
@@ -591,6 +607,38 @@ const TOOLS = [
     color: '#6dfaf422',
     desc: 'Convierte fotos de baja resolución a HD (1080p o superior). Mejora nitidez y reduce el ruido digital.',
     params: []
+  },
+{
+    id: 'convertir-dpi',
+    name: 'Convertir a 300 DPI',
+    icon: '🖨️',
+    color: '#fa9d6d22',
+    desc: 'Convierte tu imagen a 300 DPI para impresión profesional. Ideal para DTF, serigrafía y sublimación. Elige entre 72, 150, 300 y 600 DPI.',
+    params: [
+      { name: 'dpi', label: 'DPI de salida', type: 'select', options: [
+        { val: 72,  label: '72 DPI — Pantalla / web' },
+        { val: 150, label: '150 DPI — Impresión básica' },
+        { val: 300, label: '300 DPI — Impresión profesional' },
+        { val: 600, label: '600 DPI — Alta precisión' }
+      ]}
+    ]
+  },
+  {
+    id: 'reescalar',
+    name: 'Reescalar a medida',
+    icon: '📐',
+    color: '#6dfabc22',
+    desc: 'Reescala tu imagen al tamaño exacto en centímetros con el DPI que necesites. Perfecto para preparar archivos para impresión a medida.',
+    params: [
+      { name: 'ancho_cm', label: 'Ancho en cm', type: 'range', min: 1, max: 100, default: 10 },
+      { name: 'alto_cm', label: 'Alto en cm (0 = proporcional)', type: 'range', min: 0, max: 100, default: 0 },
+      { name: 'dpi', label: 'DPI de salida', type: 'select', options: [
+        { val: 72,  label: '72 DPI — Pantalla / web' },
+        { val: 150, label: '150 DPI — Impresión básica' },
+        { val: 300, label: '300 DPI — Impresión profesional' },
+        { val: 600, label: '600 DPI — Alta precisión' }
+      ]}
+    ]
   },
   {
     id: 'restaurar',

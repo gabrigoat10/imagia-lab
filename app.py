@@ -352,6 +352,92 @@ def restaurar():
 
     return pil_to_response(result, "PNG")
 
+@app.route("/convertir-dpi", methods=["POST"])
+def convertir_dpi():
+    """
+    Convierte una imagen a 300 DPI (o el DPI que elijas).
+    Mantiene el tamaño físico real en centímetros.
+    Parámetro opcional: dpi (72, 150, 300, 600 — default 300)
+    """
+    if "image" not in request.files:
+        return jsonify({"error": "No se envió ninguna imagen. Usa el campo 'image'."}), 400
+
+    dpi = int(request.form.get("dpi", 300))
+    dpi = max(72, min(600, dpi))
+
+    pil_img, _ = decode_image(request.files["image"])
+    img = pil_img.convert("RGB")
+
+    # Obtener DPI actual de la imagen
+    current_dpi = pil_img.info.get("dpi", (72, 72))
+    if isinstance(current_dpi, tuple):
+        current_dpi = current_dpi[0]
+    current_dpi = max(float(current_dpi), 72.0)
+
+    # Calcular nuevo tamaño manteniendo dimensiones físicas
+    w, h = img.size
+    factor = dpi / current_dpi
+    new_w = int(w * factor)
+    new_h = int(h * factor)
+
+    # Reescalar con alta calidad
+    resized = img.resize((new_w, new_h), Image.LANCZOS)
+
+    # Aplicar enfoque post-reescalado
+    resized = ImageEnhance.Sharpness(resized).enhance(1.3)
+
+    # Guardar con el DPI especificado
+    buf = io.BytesIO()
+    resized.save(buf, format="PNG", dpi=(dpi, dpi))
+    buf.seek(0)
+    return send_file(buf, mimetype="image/png")
+
+
+@app.route("/reescalar", methods=["POST"])
+def reescalar():
+    """
+    Reescala una imagen a un tamaño específico en centímetros con DPI personalizado.
+    Parámetros:
+      - ancho_cm: ancho deseado en centímetros (default 10)
+      - alto_cm: alto deseado en centímetros (default 0 = proporcional)
+      - dpi: resolución deseada (default 300)
+    """
+    if "image" not in request.files:
+        return jsonify({"error": "No se envió ninguna imagen. Usa el campo 'image'."}), 400
+
+    ancho_cm = float(request.form.get("ancho_cm", 10))
+    alto_cm = float(request.form.get("alto_cm", 0))
+    dpi = int(request.form.get("dpi", 300))
+    dpi = max(72, min(600, dpi))
+
+    pil_img, _ = decode_image(request.files["image"])
+    img = pil_img.convert("RGB")
+    w, h = img.size
+
+    # Convertir centímetros a píxeles (1 pulgada = 2.54 cm)
+    new_w = int((ancho_cm / 2.54) * dpi)
+
+    if alto_cm > 0:
+        new_h = int((alto_cm / 2.54) * dpi)
+    else:
+        # Mantener proporción
+        new_h = int(h * (new_w / w))
+
+    # Reescalar con alta calidad
+    resized = img.resize((new_w, new_h), Image.LANCZOS)
+
+    # Aplicar enfoque post-reescalado
+    cv2_img = pil_to_cv2(resized)
+    gaussian = cv2.GaussianBlur(cv2_img, (0, 0), 1.5)
+    sharpened = cv2.addWeighted(cv2_img, 1.3, gaussian, -0.3, 0)
+    resized = cv2_to_pil(sharpened)
+
+    # Guardar con el DPI especificado
+    buf = io.BytesIO()
+    resized.save(buf, format="PNG", dpi=(dpi, dpi))
+    buf.seek(0)
+    return send_file(buf, mimetype="image/png")
+
 
 # ─── Inicio ────────────────────────────────────────────────────────────────────
 
