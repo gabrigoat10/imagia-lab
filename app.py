@@ -1,5 +1,6 @@
 import os
 import io
+import requests as req
 os.environ["QT_QPA_PLATFORM"] = "offscreen"
 os.environ["OPENCV_IO_ENABLE_OPENEXR"] = "0"
 
@@ -130,15 +131,58 @@ def semitono_dtf():
                 cv2.circle(canvas, (x + step // 2, y + step // 2), radio, 0, -1)
     return pil_to_response(Image.fromarray(canvas, "L").convert("RGB"))
 
-@app.route("/enfocar", methods=["POST"])
-def enfocar():
+@app.route("/upscaler", methods=["POST"])
+def upscaler():
     if "image" not in request.files:
         return jsonify({"error": "No se envió ninguna imagen."}), 400
-    intensidad = max(1.0, min(5.0, float(request.form.get("intensidad", 2.0))))
+
+    escala = 4 if int(request.form.get("escala", 2)) >= 3 else 2
     pil_img, _ = decode_image(request.files["image"])
-    cv2_img = pil_to_cv2(pil_img)
-    gaussian = cv2.GaussianBlur(cv2_img, (0, 0), 3)
-    sharpened = cv2.addWeighted(cv2_img, 1 + intensidad * 0.5, gaussian, -intensidad * 0.5, 0)
+    img_rgb = pil_img.convert("RGB")
+
+    token = os.environ.get("REPLICATE_API_TOKEN")
+    if token:
+        try:
+            # Convertir imagen a base64
+            buf = io.BytesIO()
+            img_rgb.save(buf, format="PNG")
+            b64 = "data:image/png;base64," + __import__('base64').b64encode(buf.getvalue()).decode()
+
+            # Llamar a Real-ESRGAN en Replicate
+            response = req.post(
+                "https://api.replicate.com/v1/predictions",
+                headers={"Authorization": f"Token {token}", "Content-Type": "application/json"},
+                json={"version": "42fed1c4974146d4d2414e2be2c5277c7fcf05fcc3a73abf41610695738c1d7b",
+                      "input": {"image": b64, "scale": escala, "face_enhance": False}},
+                timeout=10
+            )
+            prediction = response.json()
+            pred_id = prediction.get("id")
+
+            # Esperar resultado
+            import time
+            for _ in range(60):
+                time.sleep(2)
+                poll = req.get(
+                    f"https://api.replicate.com/v1/predictions/{pred_id}",
+                    headers={"Authorization": f"Token {token}"}
+                ).json()
+                if poll.get("status") == "succeeded":
+                    img_url = poll["output"]
+                    img_data = req.get(img_url).content
+                    result = Image.open(io.BytesIO(img_data)).convert("RGB")
+                    return pil_to_response(result)
+                elif poll.get("status") == "failed":
+                    break
+        except Exception as e:
+            print(f"Replicate error: {e}")
+
+    # Fallback: upscaling local
+    w, h = img_rgb.size
+    upscaled = img_rgb.resize((w * escala, h * escala), Image.LANCZOS)
+    cv2_img = pil_to_cv2(upscaled)
+    gaussian = cv2.GaussianBlur(cv2_img, (0, 0), 1.5)
+    sharpened = cv2.addWeighted(cv2_img, 1.3, gaussian, -0.3, 0)
     return pil_to_response(cv2_to_pil(sharpened))
 
 @app.route("/desenfoque", methods=["POST"])
